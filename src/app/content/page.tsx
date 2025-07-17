@@ -22,22 +22,26 @@ interface Concept {
   difficulty_level: string;
   estimated_study_time: string;
 }
-
+interface BackendError {
+    detail?: string;
+    error?: string;
+    message?: string;
+}
 // --- Helper component for Icons ---
-const Icon = ({ path, className = "w-6 h-6" }: { path: React.ReactNode, className?: string }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className={className}
-  >
-    {path}
-  </svg>
-);
+// const Icon = ({ path, className = "w-6 h-6" }: { path: React.ReactNode, className?: string }) => (
+//   <svg
+//     xmlns="http://www.w3.org/2000/svg"
+//     viewBox="0 0 24 24"
+//     fill="none"
+//     stroke="currentColor"
+//     strokeWidth="2"
+//     strokeLinecap="round"
+//     strokeLinejoin="round"
+//     className={className}
+//   >
+//     {path}
+//   </svg>
+// );
 
 export default function VideoAssistantPage() {
   const [concepts, setConcepts] = useState<Concept[]>([]);
@@ -118,7 +122,7 @@ export default function VideoAssistantPage() {
       let canRetry = false;
       
       if (axios.isAxiosError(err)) {
-        const axiosError = err as AxiosError<any>;
+        const axiosError = err as AxiosError<BackendError>;
         if (axiosError.response) {
             const { status, data } = axiosError.response;
             const detail = data?.detail || data?.error || "Unknown server error";

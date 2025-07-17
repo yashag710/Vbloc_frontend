@@ -27,7 +27,11 @@ const ICONS = {
     loader: <path d="M21 12a9 9 0 1 1-6.219-8.56" />,
 };
 
-
+interface BackendError {
+    detail?: string;
+    error?: string;
+    message?: string;
+}
 export default function Home() {
   const [videoLink, setVideoLink] = useState("");
   const [loading, setLoading] = useState(false);
@@ -78,7 +82,7 @@ export default function Home() {
       let errorMessage = "Could not fetch transcript. ";
       
       if (axios.isAxiosError(err)) {
-        const axiosError = err as AxiosError<any>;
+        const axiosError = err as AxiosError<BackendError>;
         if (axiosError.response) {
             errorMessage += axiosError.response.data.detail || axiosError.response.data.message || "Server error";
         } else if (axiosError.request) {

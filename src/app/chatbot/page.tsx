@@ -34,6 +34,11 @@ interface ChatMessage {
   content: string;
 }
 
+interface BackendError {
+    detail?: string;
+    error?: string;
+    message?: string;
+}
 export default function YouTubeChatUI() {
   const [videoId, setVideoId] = useState('');
   const [question, setQuestion] = useState('');
@@ -87,7 +92,7 @@ export default function YouTubeChatUI() {
     } catch (err: unknown) {
         let errorMessage = 'An unknown error occurred. Please try again.';
         if (axios.isAxiosError(err)) {
-            const axiosError = err as AxiosError<any>;
+            const axiosError = err as AxiosError<BackendError>;
             if (axiosError.response) {
                 errorMessage = `Server Error (${axiosError.response.status}): ${axiosError.response.data?.detail || "Please try again."}`;
             } else if (axiosError.request) {

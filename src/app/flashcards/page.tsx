@@ -35,7 +35,11 @@ interface Flashcard {
   hint?: string;
   importance: 'high' | 'medium' | 'low';
 }
-
+interface BackendError {
+    detail?: string;
+    error?: string;
+    message?: string;
+}
 interface FlashcardData {
   video_id: string;
   generated_at: string;
@@ -91,7 +95,7 @@ export default function FlashcardsPage() {
       console.error("Error generating flashcards:", err);
       let errorMessage = "An unexpected error occurred while generating flashcards.";
       if (axios.isAxiosError(err)) {
-        const axiosError = err as AxiosError<any>;
+        const axiosError = err as AxiosError<BackendError>;
         if (axiosError.response) {
             errorMessage = `Server Error (${axiosError.response.status}): ${axiosError.response.data?.detail || "Please try again."}`;
         } else if (axiosError.request) {
