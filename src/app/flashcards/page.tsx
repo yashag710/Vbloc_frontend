@@ -76,7 +76,7 @@ export default function FlashcardsPage() {
       try {
         const apiClient = axios.create({
           timeout: 90000,
-          baseURL: "http://localhost:8000",
+          baseURL: "https://vblocbackend-production.up.railway.app",
           headers: { 'Content-Type': 'application/json' }
         });
         const response = await apiClient.post("/generate-flashcards", { video_id: videoId, transcript: transcript });

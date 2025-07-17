@@ -67,7 +67,7 @@ export default function VideoAssistantPage() {
 
       const apiClient = axios.create({
         timeout: 60000,
-        baseURL: "http://localhost:8000",
+        baseURL: "https://vblocbackend-production.up.railway.app",
         headers: { 'Content-Type': 'application/json' }
       });
 

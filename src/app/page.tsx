@@ -42,7 +42,7 @@ export default function Home() {
       console.log("Extracted video ID:", videoId);
       
       // First check if video is accessible by calling your backend
-      const checkRes = await axios.get(`http://localhost:8000/check-video/${videoId}`);
+      const checkRes = await axios.get(`https://vblocbackend-production.up.railway.app/check-video/${videoId}`);
       console.log("Video check result:", checkRes.data);
       
       if (!checkRes.data.video_accessible) {
@@ -52,7 +52,7 @@ export default function Home() {
       }
 
       // Fetch transcript from backend
-      const res = await axios.get(`http://localhost:8000/transcript/${videoId}`);
+      const res = await axios.get(`https://vblocbackend-production.up.railway.app/transcript/${videoId}`);
       console.log("Transcript fetched successfully");
 
       // Store videoId and transcript in localStorage

@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect, useState } from 'react';
-
+import axios from 'axios';
 // Icon helper component
 const Icon = ({ path, className = "w-5 h-5" }) => (
   <svg
@@ -56,19 +56,19 @@ export default function QnAPage() {
       setError("");
       try {
         // In a real app, you would fetch from your backend:
-        // const videoId = localStorage.getItem("video_id");
-        // const transcript = localStorage.getItem("transcript");
-        // const response = await axios.post('http://localhost:8000/generate-qna', { video_id, transcript });
-        // setQuestions(response.data.questions);
+        const videoId = localStorage.getItem("video_id");
+        const transcript = localStorage.getItem("transcript");
+        const response = await axios.post('https://vblocbackend-production.up.railway.app/generate-qna', { videoId, transcript });
+        setQuestions(response.data.questions);
         
         // Using mock data for demonstration
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        const mockQuestions: Question[] = [
-            { question: "What is the primary purpose of React hooks?", type: "mcq", options: { "A": "To replace class components entirely", "B": "To manage state and side effects in functional components", "C": "To improve performance of React applications", "D": "To handle routing in React applications" }, correct_answer: "B", explanation: "React hooks allow you to use state and other React features in functional components, making them more powerful and easier to work with.", difficulty: "Intermediate", topic: "React Fundamentals" },
-            { question: "Calculate the time complexity of a binary search algorithm.", type: "numerical", expected_answer: "O(log n)", solution_steps: ["Binary search divides the search space in half with each iteration.", "With n elements, we can divide at most log₂(n) times.", "Therefore, time complexity is O(log n)."], explanation: "Binary search has logarithmic time complexity because it eliminates half of the remaining elements in each step.", difficulty: "Advanced", topic: "Algorithms" },
-            { question: "What would be the output of the following Python code?\n\nfor i in range(3):\n    print(i * 2)", type: "output", expected_answer: "0\n2\n4", explanation: "The loop runs 3 times (for i = 0, 1, and 2), and each iteration prints the value of i multiplied by 2.", difficulty: "Beginner", topic: "Python Basics" }
-        ];
-        setQuestions(mockQuestions);
+        // await new Promise(resolve => setTimeout(resolve, 1500));
+        // const mockQuestions: Question[] = [
+        //     { question: "What is the primary purpose of React hooks?", type: "mcq", options: { "A": "To replace class components entirely", "B": "To manage state and side effects in functional components", "C": "To improve performance of React applications", "D": "To handle routing in React applications" }, correct_answer: "B", explanation: "React hooks allow you to use state and other React features in functional components, making them more powerful and easier to work with.", difficulty: "Intermediate", topic: "React Fundamentals" },
+        //     { question: "Calculate the time complexity of a binary search algorithm.", type: "numerical", expected_answer: "O(log n)", solution_steps: ["Binary search divides the search space in half with each iteration.", "With n elements, we can divide at most log₂(n) times.", "Therefore, time complexity is O(log n)."], explanation: "Binary search has logarithmic time complexity because it eliminates half of the remaining elements in each step.", difficulty: "Advanced", topic: "Algorithms" },
+        //     { question: "What would be the output of the following Python code?\n\nfor i in range(3):\n    print(i * 2)", type: "output", expected_answer: "0\n2\n4", explanation: "The loop runs 3 times (for i = 0, 1, and 2), and each iteration prints the value of i multiplied by 2.", difficulty: "Beginner", topic: "Python Basics" }
+        // ];
+        // setQuestions(mockQuestions);
 
       } catch (err) {
         setError("Failed to generate questions. The video content might not be suitable for a quiz.");
