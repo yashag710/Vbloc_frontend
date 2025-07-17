@@ -1,8 +1,9 @@
 "use client";
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+
 // Icon helper component
-const Icon = ({ path, className = "w-5 h-5" }) => (
+const Icon = ({ path, className = "w-5 h-5" }: { path: React.ReactNode, className?: string }) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     viewBox="0 0 24 24"
@@ -17,19 +18,16 @@ const Icon = ({ path, className = "w-5 h-5" }) => (
   </svg>
 );
 
-// Icon paths mimicking lucide-react
+// Icon paths
 const ICONS = {
   brain: <path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v0A2.5 2.5 0 0 1 9.5 7h-3A2.5 2.5 0 0 1 4 4.5v0A2.5 2.5 0 0 1 6.5 2h3m10 0a2.5 2.5 0 0 1 2.5 2.5v0a2.5 2.5 0 0 1-2.5 2.5h-3a2.5 2.5 0 0 1-2.5-2.5v0A2.5 2.5 0 0 1 14.5 2h3M9 10.5A2.5 2.5 0 0 1 11.5 13v0a2.5 2.5 0 0 1-2.5 2.5h-1A2.5 2.5 0 0 1 5.5 13v0A2.5 2.5 0 0 1 8 10.5h1m6 0a2.5 2.5 0 0 1 2.5 2.5v0a2.5 2.5 0 0 1-2.5 2.5h-1a2.5 2.5 0 0 1-2.5-2.5v0a2.5 2.5 0 0 1 2.5-2.5h1M6.5 17A2.5 2.5 0 0 1 9 19.5v0a2.5 2.5 0 0 1-2.5 2.5h-3A2.5 2.5 0 0 1 1 19.5v0A2.5 2.5 0 0 1 3.5 17h3m10 0a2.5 2.5 0 0 1 2.5 2.5v0a2.5 2.5 0 0 1-2.5 2.5h-3a2.5 2.5 0 0 1-2.5-2.5v0A2.5 2.5 0 0 1 14.5 17h3" />,
   checkCircle: <><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><path d="m9 11 3 3L22 4" /></>,
   xCircle: <><circle cx="12" cy="12" r="10" /><path d="m15 9-6 6" /><path d="m9 9 6 6" /></>,
-  target: <><circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="6" /><circle cx="12" cy="12" r="2" /></>,
-  bookOpen: <><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" /><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" /></>,
   trophy: <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6m12 5h1.5a2.5 2.5 0 0 0 0-5H18M9 12l-3-9 9 9-3 9" />,
   rotateCcw: <><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path d="M3 3v5h5" /></>,
-  chevronRight: <path d="m9 18 6-6-6-6" />,
 };
 
-// Define question types
+// --- Type Definitions ---
 interface BaseQuestion {
   question: string;
   type: "mcq" | "numerical" | "output";
@@ -49,29 +47,33 @@ export default function QnAPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // Fetch questions from backend (using mock data for now)
   useEffect(() => {
     const fetchQuestions = async () => {
       setLoading(true);
       setError("");
       try {
-        // In a real app, you would fetch from your backend:
         const videoId = localStorage.getItem("video_id");
         const transcript = localStorage.getItem("transcript");
-        const response = await axios.post('https://vblocbackend-production.up.railway.app/generate-qna', { videoId, transcript });
-        setQuestions(response.data.questions);
+
+        if (!videoId || !transcript) {
+            setError("Video data not found. Please return to the homepage and analyze a video first.");
+            setLoading(false);
+            return;
+        }
+
+        const response = await axios.post('https://vblocbackend-production.up.railway.app/generate-qna', { 
+            video_id: videoId, 
+            transcript: transcript 
+        });
         
-        // Using mock data for demonstration
-        // await new Promise(resolve => setTimeout(resolve, 1500));
-        // const mockQuestions: Question[] = [
-        //     { question: "What is the primary purpose of React hooks?", type: "mcq", options: { "A": "To replace class components entirely", "B": "To manage state and side effects in functional components", "C": "To improve performance of React applications", "D": "To handle routing in React applications" }, correct_answer: "B", explanation: "React hooks allow you to use state and other React features in functional components, making them more powerful and easier to work with.", difficulty: "Intermediate", topic: "React Fundamentals" },
-        //     { question: "Calculate the time complexity of a binary search algorithm.", type: "numerical", expected_answer: "O(log n)", solution_steps: ["Binary search divides the search space in half with each iteration.", "With n elements, we can divide at most log₂(n) times.", "Therefore, time complexity is O(log n)."], explanation: "Binary search has logarithmic time complexity because it eliminates half of the remaining elements in each step.", difficulty: "Advanced", topic: "Algorithms" },
-        //     { question: "What would be the output of the following Python code?\n\nfor i in range(3):\n    print(i * 2)", type: "output", expected_answer: "0\n2\n4", explanation: "The loop runs 3 times (for i = 0, 1, and 2), and each iteration prints the value of i multiplied by 2.", difficulty: "Beginner", topic: "Python Basics" }
-        // ];
-        // setQuestions(mockQuestions);
+        if (response.data && response.data.questions && response.data.questions.length > 0) {
+            setQuestions(response.data.questions);
+        } else {
+            setError("No questions could be generated for this video. It might be too short or lack clear topics.");
+        }
 
       } catch (err) {
-        setError("Failed to generate questions. The video content might not be suitable for a quiz.");
+        setError("Failed to generate questions. The backend server might be down or the video content is unsuitable for a quiz.");
         console.error(err);
       } finally {
         setLoading(false);
@@ -98,7 +100,7 @@ export default function QnAPage() {
 
   const getScore = () => {
     const scorableQuestions = questions.filter(q => q.type === "mcq");
-    const correctAnswers = scorableQuestions.filter((q, i) => {
+    const correctAnswers = scorableQuestions.filter((q) => {
         const originalIndex = questions.indexOf(q);
         return userAnswers[originalIndex] === (q as MCQQuestion).correct_answer;
     });

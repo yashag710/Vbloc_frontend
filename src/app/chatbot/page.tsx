@@ -1,8 +1,9 @@
 "use client";
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
+import axios, { AxiosError } from 'axios';
 
 // Icon helper component
-const Icon = ({ path, className = "w-5 h-5" }) => (
+const Icon = ({ path, className = "w-5 h-5" }: { path: React.ReactNode, className?: string }) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     viewBox="0 0 24 24"
@@ -17,7 +18,7 @@ const Icon = ({ path, className = "w-5 h-5" }) => (
   </svg>
 );
 
-// Icon paths mimicking lucide-react
+// Icon paths
 const ICONS = {
   bot: <path d="M12 8V4H8V8H4v4h4v4h4v4h4v-4h4V8h-4zM4 12v4h4v4h4v-4h4v-4h4V8h-4V4H8v4H4z" />,
   user: <><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></>,
@@ -27,10 +28,16 @@ const ICONS = {
   alertCircle: <><circle cx="12" cy="12" r="10" /><path d="M12 8v4" /><path d="M12 16h.01" /></>,
 };
 
+// --- Type Definitions ---
+interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
 export default function YouTubeChatUI() {
   const [videoId, setVideoId] = useState('');
   const [question, setQuestion] = useState('');
-  const [chatHistory, setChatHistory] = useState<any[]>([]);
+  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [transcript, setTranscript] = useState('');
@@ -51,44 +58,50 @@ export default function YouTubeChatUI() {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatHistory]);
 
-  const handleAsk = async () => {
+  const handleAsk = useCallback(async () => {
     if (!question.trim() || loading) return;
 
-    const newHistory = [...chatHistory, { role: 'user', content: question }];
+    const newHistory: ChatMessage[] = [...chatHistory, { role: 'user', content: question }];
     setChatHistory(newHistory);
+    const currentQuestion = question;
     setQuestion('');
     setLoading(true);
     setError('');
 
     try {
-      const response = await fetch('https://vblocbackend-production.up.railway.app/video-chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          video_id: videoId,
-          transcript: transcript,
-          new_question: question,
-          chat_history: chatHistory, // Send history before the new question
-        }),
+      const apiClient = axios.create({
+        baseURL: "https://vblocbackend-production.up.railway.app",
+        headers: { 'Content-Type': 'application/json' }
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to get a response from the server.');
-      }
+      const response = await apiClient.post('/video-chat', {
+        video_id: videoId,
+        transcript: transcript,
+        new_question: currentQuestion,
+        chat_history: chatHistory, // Send history before the new question
+      });
 
-      const data = await response.json();
-      const assistantTurn = data.new_chat_turn;
-
+      const assistantTurn: ChatMessage = response.data.new_chat_turn;
       setChatHistory(prev => [...prev, assistantTurn]);
-    } catch (err: any) {
-      setError(err.message || 'An unknown error occurred. Please try again.');
-      // Revert optimistic update on error
-      setChatHistory(chatHistory);
+
+    } catch (err: unknown) {
+        let errorMessage = 'An unknown error occurred. Please try again.';
+        if (axios.isAxiosError(err)) {
+            const axiosError = err as AxiosError<any>;
+            if (axiosError.response) {
+                errorMessage = `Server Error (${axiosError.response.status}): ${axiosError.response.data?.detail || "Please try again."}`;
+            } else if (axiosError.request) {
+                errorMessage = "Cannot connect to the server. Please ensure the backend is running.";
+            }
+        } else if (err instanceof Error) {
+            errorMessage = err.message;
+        }
+      setError(errorMessage);
+      setChatHistory(chatHistory); // Revert optimistic update
     } finally {
       setLoading(false);
     }
-  };
+  }, [question, loading, chatHistory, videoId, transcript]);
   
   const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -123,7 +136,7 @@ export default function YouTubeChatUI() {
           <div className="max-w-4xl mx-auto flex items-center justify-between">
             <h1 className="text-xl font-bold tracking-tighter">Video Chatbot</h1>
             <button
-              onClick={() => window.location.href = "/content"} // Assuming /content is the dashboard
+              onClick={() => window.location.href = "/content"}
               className="px-4 py-2 text-sm font-semibold border border-black hover:bg-black hover:text-white transition-colors duration-300"
             >
               Back to Dashboard
@@ -132,7 +145,6 @@ export default function YouTubeChatUI() {
         </header>
 
         <div className="flex-1 flex flex-col max-w-4xl mx-auto w-full p-4">
-          {/* Chat History */}
           <div className="flex-1 overflow-y-auto mb-4 p-4 border border-black/10 scrollbar-thin">
             {chatHistory.length === 0 ? (
               <div className="flex items-center justify-center h-full text-center">
@@ -176,7 +188,6 @@ export default function YouTubeChatUI() {
             )}
           </div>
 
-          {/* Error Message */}
           {error && (
             <div className="mb-4 p-3 border border-red-500/30 bg-red-500/5 rounded-lg flex items-center gap-3 text-sm text-red-700">
               <Icon path={ICONS.alertCircle} className="w-5 h-5 flex-shrink-0" />
@@ -184,7 +195,6 @@ export default function YouTubeChatUI() {
             </div>
           )}
 
-          {/* Input Area */}
           <div className="mt-auto">
             <div className="flex gap-2">
               <textarea

@@ -1,10 +1,9 @@
 "use client";
-import { useState } from "react";
-// import { useRouter } from "next/navigation"; // This was removed as it's specific to Next.js
-import axios from "axios";
+import React, { useState } from "react";
+import axios, { AxiosError } from "axios";
 
-// Helper component for Icons
-const Icon = ({ path, className = "w-6 h-6" }) => (
+// Icon helper component
+const Icon = ({ path, className = "w-6 h-6" }: { path: React.ReactNode, className?: string }) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     viewBox="0 0 24 24"
@@ -15,9 +14,18 @@ const Icon = ({ path, className = "w-6 h-6" }) => (
     strokeLinejoin="round"
     className={className}
   >
-    <path d={path} />
+    {path}
   </svg>
 );
+
+// Icon Paths
+const ICONS = {
+    activity: <path d="M22 12h-4l-3 9L9 3l-3 9H2" />,
+    layers: <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />,
+    layoutGrid: <path d="M3 3v18h18V3H3zm16 16H5V5h14v14zM11 11h2v2h-2v-2zm-4 0h2v2H7v-2zm8 0h2v2h-2v-2z" />,
+    messageSquare: <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />,
+    loader: <path d="M21 12a9 9 0 1 1-6.219-8.56" />,
+};
 
 
 export default function Home() {
@@ -25,7 +33,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (loading) return;
     setLoading(true);
@@ -41,8 +49,12 @@ export default function Home() {
     try {
       console.log("Extracted video ID:", videoId);
       
-      // First check if video is accessible by calling your backend
-      const checkRes = await axios.get(`https://vblocbackend-production.up.railway.app/check-video/${videoId}`);
+      const apiClient = axios.create({
+          baseURL: "https://vblocbackend-production.up.railway.app",
+          timeout: 30000,
+      });
+
+      const checkRes = await apiClient.get(`/check-video/${videoId}`);
       console.log("Video check result:", checkRes.data);
       
       if (!checkRes.data.video_accessible) {
@@ -51,42 +63,40 @@ export default function Home() {
         return;
       }
 
-      // Fetch transcript from backend
-      const res = await axios.get(`https://vblocbackend-production.up.railway.app/transcript/${videoId}`);
+      const res = await apiClient.get(`/transcript/${videoId}`);
       console.log("Transcript fetched successfully");
 
-      // Store videoId and transcript in localStorage
       localStorage.setItem("video_id", videoId);
       localStorage.setItem("transcript", res.data.transcript);
 
       console.log("Transcript and video ID stored in localStorage.");
       
-      // Redirect to the content page using standard browser navigation
       window.location.href = `/content`;
 
-    } catch (error) {
-      console.error("Error details:", error);
+    } catch (err: unknown) {
+      console.error("Error details:", err);
       let errorMessage = "Could not fetch transcript. ";
       
-      if (error.response) {
-        // Server responded with error status
-        errorMessage += error.response.data.detail || error.response.data.message || "Server error";
-      } else if (error.request) {
-        // Request was made but no response
-        errorMessage += "No response from server. Check if backend is running.";
-      } else {
-        // Something else happened
-        errorMessage += error.message;
+      if (axios.isAxiosError(err)) {
+        const axiosError = err as AxiosError<any>;
+        if (axiosError.response) {
+            errorMessage += axiosError.response.data.detail || axiosError.response.data.message || "Server error";
+        } else if (axiosError.request) {
+            errorMessage += "No response from server. Check if backend is running.";
+        } else {
+            errorMessage += axiosError.message;
+        }
+      } else if (err instanceof Error) {
+        errorMessage += err.message;
       }
       
       setError(errorMessage);
     } finally {
-      // In a real redirect, this might not run if the page navigates away quickly.
       setLoading(false);
     }
   };
 
-  const extractYouTubeID = (url) => {
+  const extractYouTubeID = (url: string): string | null => {
     const patterns = [
       /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/,
       /^(?:https?:\/\/)?(?:www\.)?youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/,
@@ -103,7 +113,6 @@ export default function Home() {
 
   return (
     <>
-      {/* This style tag injects global styles for the component. */}
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap');
         body {
@@ -111,7 +120,6 @@ export default function Home() {
         }
       `}</style>
       <main className="min-h-screen w-full bg-white text-black antialiased">
-        {/* Header */}
         <header className="py-6 px-4 sm:px-6 lg:px-8">
           <div className="max-w-7xl mx-auto flex items-center justify-between">
             <h1 className="text-xl font-bold tracking-tighter">
@@ -120,10 +128,8 @@ export default function Home() {
           </div>
         </header>
 
-        {/* Main Content */}
         <div className="flex flex-col items-center justify-center px-4 py-12 sm:px-6 lg:px-8 text-center">
           <div className="max-w-3xl w-full">
-            {/* Welcome Section */}
             <h2 className="text-4xl sm:text-5xl md:text-6xl font-black tracking-tighter mb-4">
               Learn Anything from Video.
             </h2>
@@ -131,7 +137,6 @@ export default function Home() {
               Paste a YouTube link to instantly generate concepts, flashcards, and quizzes. Transform passive watching into active learning.
             </p>
 
-            {/* Input Form */}
             <div className="bg-black text-white p-8 sm:p-10 w-full">
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div>
@@ -139,7 +144,7 @@ export default function Home() {
                     YouTube Video URL
                   </label>
                   <div className="relative">
-                     <Icon path="M22 12h-4l-3 9L9 3l-3 9H2" className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
+                     <Icon path={ICONS.activity} className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
                     <input
                       id="videoLink"
                       type="text"
@@ -176,43 +181,21 @@ export default function Home() {
               </form>
             </div>
 
-            {/* Features Section */}
             <div className="mt-16">
               <h3 className="text-sm font-bold uppercase tracking-widest text-black/50 mb-8">Powered By AI</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <div className="text-left p-6 border border-black/10">
-                  <Icon path="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" className="w-8 h-8 mb-4" />
-                  <h3 className="text-lg font-bold mb-2">Concept Extraction</h3>
-                  <p className="text-black/70 text-sm">
-                    Key concepts are automatically identified and explained in detail.
-                  </p>
-                </div>
-
-                <div className="text-left p-6 border border-black/10">
-                  <Icon path="M3 3v18h18V3H3zm16 16H5V5h14v14zM11 11h2v2h-2v-2zm-4 0h2v2H7v-2zm8 0h2v2h-2v-2z" className="w-8 h-8 mb-4" />
-                  <h3 className="text-lg font-bold mb-2">Smart Flashcards</h3>
-                  <p className="text-black/70 text-sm">
-                    Generate interactive flashcards for effective, spaced-repetition learning.
-                  </p>
-                </div>
-
-                <div className="text-left p-6 border border-black/10">
-                  <Icon path="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" className="w-8 h-8 mb-4" />
-                  <h3 className="text-lg font-bold mb-2">Q&A Generation</h3>
-                  <p className="text-black/70 text-sm">
-                    Create comprehensive question and answer pairs for self-assessment.
-                  </p>
-                </div>
+                <FeatureCard icon={ICONS.layers} title="Concept Extraction" description="Key concepts are automatically identified and explained in detail." />
+                <FeatureCard icon={ICONS.layoutGrid} title="Smart Flashcards" description="Generate interactive flashcards for effective, spaced-repetition learning." />
+                <FeatureCard icon={ICONS.messageSquare} title="Q&A Generation" description="Create comprehensive question and answer pairs for self-assessment." />
               </div>
             </div>
           </div>
         </div>
 
-        {/* Footer */}
         <footer className="border-t border-black/10 py-8 px-4 sm:px-6 lg:px-8">
           <div className="max-w-7xl mx-auto text-center">
             <p className="text-black/60 text-sm">
-              &copy; {new Date().getFullYear()} VideoLearner. An AI-powered learning tool.
+              &copy; {new Date().getFullYear()} Vbloc. An AI-powered learning tool.
             </p>
           </div>
         </footer>
@@ -220,3 +203,11 @@ export default function Home() {
     </>
   );
 }
+
+const FeatureCard = ({ icon, title, description }: { icon: React.ReactNode, title: string, description: string }) => (
+    <div className="text-left p-6 border border-black/10">
+        <Icon path={icon} className="w-8 h-8 mb-4" />
+        <h3 className="text-lg font-bold mb-2">{title}</h3>
+        <p className="text-black/70 text-sm">{description}</p>
+    </div>
+);

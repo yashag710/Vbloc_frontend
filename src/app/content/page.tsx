@@ -1,10 +1,30 @@
 "use client";
-import React, { useEffect, useState } from "react";
-import axios from "axios";
-// import { useRouter } from "next/navigation"; // Removed this line to fix compilation error
+import React, { useEffect, useState, useCallback } from "react";
+import axios, { AxiosError } from "axios";
 
-// Helper component for Icons
-const Icon = ({ path, className = "w-6 h-6" }) => (
+// --- Type Definitions ---
+interface Topic {
+  topic: string;
+  subtopics: string[];
+}
+
+interface Concept {
+  concept: string;
+  definition: string;
+  detailed_explanation: string;
+  formulas: string[];
+  real_world_examples: string[];
+  key_points: string[];
+  common_mistakes: string[];
+  study_tips: string[];
+  prerequisites: string[];
+  applications: string[];
+  difficulty_level: string;
+  estimated_study_time: string;
+}
+
+// --- Helper component for Icons ---
+const Icon = ({ path, className = "w-6 h-6" }: { path: React.ReactNode, className?: string }) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     viewBox="0 0 24 24"
@@ -15,26 +35,23 @@ const Icon = ({ path, className = "w-6 h-6" }) => (
     strokeLinejoin="round"
     className={className}
   >
-    <path d={path} />
+    {path}
   </svg>
 );
 
 export default function VideoAssistantPage() {
-  const [concepts, setConcepts] = useState<any[]>([]);
-  const [topics, setTopics] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true); // Start with loading true
+  const [concepts, setConcepts] = useState<Concept[]>([]);
+  const [topics, setTopics] = useState<Topic[]>([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [hasMounted, setHasMounted] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
   
-  // const router = useRouter(); // Removed this line
-
-  // This ensures localStorage is accessed only on the client side.
   useEffect(() => {
     setHasMounted(true);
   }, []);
   
-  const fetchData = async (isRetry = false) => {
+  const fetchData = useCallback(async (isRetry = false) => {
     if (!hasMounted) return;
     
     const videoId = localStorage.getItem("video_id");
@@ -94,25 +111,27 @@ export default function VideoAssistantPage() {
         throw new Error("Both concepts and topics extraction failed. Please check the server.");
       }
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error fetching data:", err);
       
       let errorMessage = "An unexpected error occurred. ";
       let canRetry = false;
       
-      if (err.response) {
-        const { status, data } = err.response;
-        const detail = data?.detail || data?.error || "Unknown server error";
-        errorMessage = `Server Error (${status}): ${detail}`;
-        canRetry = status >= 500;
-      } else if (err.request) {
-        errorMessage = "Cannot connect to the server. Please ensure the backend is running and accessible.";
-        canRetry = true;
-      } else if (err.code === 'ECONNABORTED') {
-        errorMessage = "The request timed out. The video might be too long or the server is overloaded.";
-        canRetry = true;
-      } else {
-        errorMessage = err.message || "An unknown error occurred.";
+      if (axios.isAxiosError(err)) {
+        const axiosError = err as AxiosError<any>;
+        if (axiosError.response) {
+            const { status, data } = axiosError.response;
+            const detail = data?.detail || data?.error || "Unknown server error";
+            errorMessage = `Server Error (${status}): ${detail}`;
+            canRetry = status >= 500;
+        } else if (axiosError.request) {
+            errorMessage = "Cannot connect to the server. Please ensure the backend is running and accessible.";
+            canRetry = true;
+        } else {
+            errorMessage = axiosError.message;
+        }
+      } else if (err instanceof Error) {
+        errorMessage = err.message;
         canRetry = true;
       }
       
@@ -128,23 +147,23 @@ export default function VideoAssistantPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [hasMounted, retryCount]);
 
   useEffect(() => {
     if(hasMounted) {
         fetchData();
     }
-  }, [hasMounted]);
+  }, [hasMounted, fetchData]);
 
   if (!hasMounted) {
-    return null; // Prevents server-side rendering/hydration errors
+    return null;
   }
 
   const handleRetry = () => {
     fetchData(false);
   };
   
-  const renderConceptField = (item: any, fieldName: string, displayName: string) => {
+  const renderConceptField = (item: Concept, fieldName: keyof Concept, displayName: string) => {
     const value = item[fieldName];
     if (!value || (Array.isArray(value) && value.length === 0)) return null;
 
@@ -157,14 +176,14 @@ export default function VideoAssistantPage() {
               <p key={idx} className="leading-relaxed flex items-start"><span className="mr-2 mt-1.5 opacity-50">•</span>{subItem}</p>
             ))
           ) : (
-            <p className="leading-relaxed">{value}</p>
+            <p className="leading-relaxed">{String(value)}</p>
           )}
         </div>
       </div>
     );
   };
   
-  const ActionButton = ({ onClick, disabled, children }) => (
+  const ActionButton = ({ onClick, disabled, children }: { onClick: () => void, disabled: boolean, children: React.ReactNode }) => (
     <button
       onClick={onClick}
       disabled={disabled}
@@ -181,30 +200,19 @@ export default function VideoAssistantPage() {
         body { font-family: 'Inter', sans-serif; background-color: #fff; }
       `}</style>
       <main className="min-h-screen w-full bg-white text-black flex flex-col antialiased">
-        {/* Header */}
         <header className="py-6 px-4 sm:px-6 lg:px-8 border-b border-black/10 flex-shrink-0">
           <div className="max-w-[90rem] mx-auto flex items-center justify-between">
-            <h1 className="text-xl font-bold tracking-tighter">
-              Learning Dashboard
-            </h1>
-            <button
-              onClick={() => window.location.href = "/"}
-              className="px-4 py-2 text-sm font-semibold border border-black hover:bg-black hover:text-white transition-colors duration-300"
-            >
-              New Video
-            </button>
+            <h1 className="text-xl font-bold tracking-tighter">Learning Dashboard</h1>
+            <button onClick={() => window.location.href = '/'} className="px-4 py-2 text-sm font-semibold border border-black hover:bg-black hover:text-white transition-colors duration-300">New Video</button>
           </div>
         </header>
 
-        {/* Main Content */}
         <div className="flex-1 flex max-w-[90rem] mx-auto w-full overflow-hidden">
-          {/* Left Panel - Concepts */}
           <section className="flex-1 flex flex-col border-r border-black/10">
             <div className="px-6 py-4 border-b border-black/10 flex-shrink-0">
               <h2 className="text-lg font-bold tracking-tight">Extracted Concepts</h2>
               <p className="text-black/60 text-sm">Key ideas and explanations from the video.</p>
             </div>
-
             <div className="flex-1 overflow-y-auto p-6">
               {loading && (
                 <div className="flex flex-col items-center justify-center h-full text-center">
@@ -214,7 +222,6 @@ export default function VideoAssistantPage() {
                   {retryCount > 0 && <p className="text-black/60 font-bold text-sm mt-2">Retry attempt {retryCount}/2</p>}
                 </div>
               )}
-
               {error && (
                 <div className="h-full flex items-center justify-center">
                     <div className="border border-black/10 p-6 text-center">
@@ -222,19 +229,16 @@ export default function VideoAssistantPage() {
                         <p className="text-black/70 mb-4 max-w-sm">{error}</p>
                         <div className="flex gap-3 justify-center">
                             <button onClick={handleRetry} className="px-4 py-2 bg-black text-white text-sm font-semibold transition-colors duration-200">Try Again</button>
-                            <button onClick={() => window.location.href = "/"} className="px-4 py-2 bg-white border border-black/20 text-black text-sm font-semibold transition-colors duration-200">Go Home</button>
+                            <button onClick={() => window.location.href = '/'} className="px-4 py-2 bg-white border border-black/20 text-black text-sm font-semibold transition-colors duration-200">Go Home</button>
                         </div>
                     </div>
                 </div>
               )}
-
               {!loading && !error && concepts?.length > 0 && (
                 <div className="space-y-8">
                   {concepts.map((item, index) => (
                     <div key={index} className="border border-black/10 p-6">
-                      <h3 className="text-2xl font-black tracking-tighter text-black mb-4">
-                        {item.concept || "Unnamed Concept"}
-                      </h3>
+                      <h3 className="text-2xl font-black tracking-tighter text-black mb-4">{item.concept || "Unnamed Concept"}</h3>
                       <div className="space-y-6">
                         {renderConceptField(item, "definition", "Definition")}
                         {renderConceptField(item, "detailed_explanation", "Detailed Explanation")}
@@ -256,7 +260,6 @@ export default function VideoAssistantPage() {
                   ))}
                 </div>
               )}
-              
               {!loading && !error && (!concepts || concepts.length === 0) && (
                  <div className="h-full flex items-center justify-center">
                     <div className="text-center">
@@ -269,7 +272,6 @@ export default function VideoAssistantPage() {
             </div>
           </section>
 
-          {/* Right Panel - Topics & Actions */}
           <aside className="w-96 flex-shrink-0 flex flex-col bg-white">
             <div className="px-6 py-4 border-b border-black/10">
               <h2 className="text-lg font-bold tracking-tight">Topic Structure</h2>
@@ -303,13 +305,12 @@ export default function VideoAssistantPage() {
               )}
             </div>
             
-            {/* Bottom Action Bar */}
             <div className="p-4 border-t border-black/10 mt-auto">
                 <h3 className="text-sm font-bold text-center mb-3 uppercase tracking-wider text-black/50">Next Steps</h3>
                 <div className="flex justify-center items-center gap-2">
-                    <ActionButton onClick={() => window.location.href = "/flashcards"} disabled={loading || !!error}>Flashcards</ActionButton>
-                    <ActionButton onClick={() => window.location.href = "/qna"} disabled={loading || !!error}>Generate Q&A</ActionButton>
-                    <ActionButton onClick={() => window.location.href = "/chatbot"} disabled={loading || !!error}>Chatbot</ActionButton>
+                    <ActionButton onClick={() => window.location.href = '/flashcards'} disabled={loading || !!error}>Flashcards</ActionButton>
+                    <ActionButton onClick={() => window.location.href = '/qna'} disabled={loading || !!error}>Generate Q&A</ActionButton>
+                    <ActionButton onClick={() => window.location.href = '/chatbot'} disabled={loading || !!error}>Chatbot</ActionButton>
                 </div>
             </div>
           </aside>
