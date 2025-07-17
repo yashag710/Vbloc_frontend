@@ -2,6 +2,13 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
+import { Cabin } from "next/font/google";
+
+const cabin = Cabin({
+  subsets: ["latin"],
+  variable: "--font-cabin",
+});
+
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -25,7 +32,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${cabin.variable} ${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         {children}
       </body>
